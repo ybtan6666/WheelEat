@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import SpinWheel from './components/SpinWheel';
 import CategorySelector from './components/CategorySelector';
@@ -20,6 +20,65 @@ function App() {
   const [result, setResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [error, setError] = useState(null);
+  const ringAudioRef = useRef(null);
+  const clickAudioRef = useRef(null);
+
+  // Result "ring" sound (frontend/public/sounds/ring.mp3 -> /sounds/ring.mp3)
+  useEffect(() => {
+    const audio = new Audio('/sounds/ring.mp3');
+    audio.loop = false;
+    audio.volume = 0.8;
+    audio.preload = 'auto';
+    ringAudioRef.current = audio;
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+      ringAudioRef.current = null;
+    };
+  }, []);
+
+  // UI click sound (frontend/public/sounds/click.mp3 -> /sounds/click.mp3)
+  useEffect(() => {
+    const audio = new Audio('/sounds/click.mp3');
+    audio.loop = false;
+    audio.volume = 0.6;
+    audio.preload = 'auto';
+    clickAudioRef.current = audio;
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+      clickAudioRef.current = null;
+    };
+  }, []);
+
+  const playClick = useCallback(() => {
+    const audio = clickAudioRef.current;
+    if (!audio) return;
+    audio.currentTime = 0;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // Autoplay may be blocked; user interaction usually fixes it.
+      });
+    }
+  }, []);
+
+  // Play ring when the result modal appears
+  useEffect(() => {
+    if (!showResult || !result) return;
+    const audio = ringAudioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = 0;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // Some browsers block autoplay; user interaction usually fixes it.
+      });
+    }
+  }, [showResult, result]);
 
   // Load available malls on mount
   useEffect(() => {
@@ -152,11 +211,13 @@ function App() {
             <DietarySelector
               value={dietaryNeed}
               onChange={setDietaryNeed}
+              onClickSound={playClick}
             />
             <CategorySelector
               selected={selectedCategories}
               onChange={setSelectedCategories}
               categories={categories}
+              onClickSound={playClick}
             />
           </div>
 

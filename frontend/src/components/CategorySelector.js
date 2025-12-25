@@ -17,8 +17,9 @@ const DEFAULT_CATEGORIES = [
   'Supermarket',
 ];
 
-function CategorySelector({ selected, onChange, categories = DEFAULT_CATEGORIES }) {
+function CategorySelector({ selected, onChange, categories = DEFAULT_CATEGORIES, onClickSound }) {
   const toggleCategory = (category) => {
+    if (onClickSound) onClickSound();
     if (selected.includes(category)) {
       onChange(selected.filter((c) => c !== category));
     } else {

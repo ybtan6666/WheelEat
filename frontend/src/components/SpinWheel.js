@@ -6,6 +6,7 @@ function SpinWheel({ restaurants, spinning, result }) {
   const lastSpinKeyRef = useRef(null);
   const [rotationDeg, setRotationDeg] = useState(0);
   const [transitionMs, setTransitionMs] = useState(0);
+  const spinAudioRef = useRef(null);
 
   const items = useMemo(() => {
     if (!restaurants || restaurants.length === 0) return [];
@@ -55,6 +56,51 @@ function SpinWheel({ restaurants, spinning, result }) {
       'Z',
     ].join(' ');
   };
+
+  const getLabelStyleForCount = (count) => {
+    // Tweak these thresholds to your taste. Goal: keep labels readable as slices get thinner.
+    if (count <= 8) return { fontSize: 4.2, maxChars: 18 };
+    if (count <= 12) return { fontSize: 3.7, maxChars: 16 };
+    if (count <= 18) return { fontSize: 3.2, maxChars: 14 };
+    if (count <= 26) return { fontSize: 2.7, maxChars: 11 };
+    if (count <= 36) return { fontSize: 2.4, maxChars: 9 };
+    return { fontSize: 2.1, maxChars: 8 };
+  };
+
+  // Spinning sound (frontend/public/sounds/spin.mp3 -> /sounds/spin.mp3)
+  useEffect(() => {
+    const audio = new Audio('/sounds/spin.mp3');
+    audio.loop = true;
+    audio.volume = 0.6;
+    audio.preload = 'auto';
+    spinAudioRef.current = audio;
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+      spinAudioRef.current = null;
+    };
+  }, []);
+
+  // Play/pause sound based on `spinning`
+  useEffect(() => {
+    const audio = spinAudioRef.current;
+    if (!audio) return;
+
+    if (spinning) {
+      // Reset to start each spin for consistency
+      audio.currentTime = 0;
+      const p = audio.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {
+          // Autoplay may be blocked in some browsers; user interaction usually fixes it.
+        });
+      }
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, [spinning]);
 
   // Reset when list changes (mall/categories)
   useEffect(() => {
@@ -167,7 +213,9 @@ function SpinWheel({ restaurants, spinning, result }) {
                 const start = -90 + i * sliceDeg;
                 const end = -90 + (i + 1) * sliceDeg;
                 const d = describeSlice(50, 50, 48, start, end);
-                const label = r.name.length > 16 ? `${r.name.slice(0, 16)}…` : r.name;
+                const { fontSize, maxChars } = getLabelStyleForCount(items.length);
+                const label =
+                  r.name.length > maxChars ? `${r.name.slice(0, Math.max(1, maxChars - 1))}…` : r.name;
                 const mid = (start + end) / 2;
                 const textPos = polarToCartesian(50, 50, 30, mid);
                 const fill = palette[i % palette.length];
@@ -179,10 +227,13 @@ function SpinWheel({ restaurants, spinning, result }) {
                       x={textPos.x}
                       y={textPos.y}
                       fill="#ffffff"
-                      fontSize="4"
+                      fontSize={fontSize}
                       fontWeight="700"
                       textAnchor="middle"
                       dominantBaseline="middle"
+                      paintOrder="stroke"
+                      stroke="rgba(0,0,0,0.18)"
+                      strokeWidth="0.6"
                       transform={`rotate(${mid + 90} ${textPos.x} ${textPos.y})`}
                     >
                       {label}
@@ -195,7 +246,7 @@ function SpinWheel({ restaurants, spinning, result }) {
           </svg>
         </div>
 
-        {spinning && <div className="spinning-overlay">Spinning...</div>}
+        {spinning && <div className="spinning-overlay" />}
       </div>
     </div>
   );
