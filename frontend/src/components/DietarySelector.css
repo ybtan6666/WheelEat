@@ -1,0 +1,54 @@
+.dietary-selector {
+  width: 100%;
+}
+
+.selector-label {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.dietary-options {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dietary-option {
+  flex: 1;
+  min-width: 120px;
+  padding: 12px 20px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dietary-option:hover {
+  border-color: #667eea;
+  color: #667eea;
+  transform: translateY(-2px);
+}
+
+.dietary-option.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+@media (max-width: 480px) {
+  .dietary-options {
+    flex-direction: column;
+  }
+
+  .dietary-option {
+    width: 100%;
+  }
+}
