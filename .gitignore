@@ -37,3 +37,8 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Environment variables
+frontend/.env
+backend-node/.env
+.env
