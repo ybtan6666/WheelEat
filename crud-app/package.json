@@ -1,0 +1,15 @@
+{
+  "name": "crud-app",
+  "version": "1.0.0",
+  "description": "CRUD User Management App with Vercel and Supabase",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.4"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
+}
+
