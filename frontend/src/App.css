@@ -253,8 +253,14 @@ header h1 {
    SMALL MOBILE (360px and below)
    ========================================= */
 @media (max-width: 360px) {
+  .App {
+    padding: 2px;
+  }
+
   .container {
-    padding: 12px;
+    padding: 6px;
+    border-radius: 8px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
   }
 
   header h1 {
