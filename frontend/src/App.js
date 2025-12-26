@@ -6,6 +6,7 @@ import CategorySelector from './components/CategorySelector';
 import DietarySelector from './components/DietarySelector';
 import MallSelector from './components/MallSelector';
 import ResultModal from './components/ResultModal';
+import AdSense from './components/AdSense';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -200,6 +201,12 @@ function WheelEatApp() {
     <div className="App">
       <div className="container">
         <header>
+          <AdSense 
+            slotId={process.env.REACT_APP_ADSENSE_HEADER_SLOT} 
+            className="ad-container-header" 
+            format="horizontal" 
+            label="Header Ad"
+          />
           <h1>🍽️ WheelEat</h1>
           <p className="subtitle">Spin the wheel to decide where to eat!</p>
         </header>
@@ -246,6 +253,14 @@ function WheelEatApp() {
             )}
           </div>
         </div>
+        
+        {/* Bottom Ad */}
+        <AdSense 
+          slotId={process.env.REACT_APP_ADSENSE_BOTTOM_SLOT || process.env.REACT_APP_ADSENSE_CONTENT_SLOT} 
+          className="ad-container-bottom" 
+          format="horizontal" 
+          label="Bottom Ad"
+        />
       </div>
       
       {/* Result Modal - shows after spin completes */}
