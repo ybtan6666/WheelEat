@@ -123,35 +123,39 @@
 
 @media (max-width: 480px) {
   .spin-wheel-container.v2 {
-    padding: 8px 0;
+    padding: 5px 0;
+    margin: 0 auto;
+    max-width: 100%;
   }
 
   .spin-wheel-frame {
     max-width: 100%;
+    margin: 0 auto;
   }
 
   .spin-wheel-rotator {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    margin: 0 auto;
   }
 
   .spin-wheel-pointer {
-    top: 4px;
+    top: 3px;
     border-left: 12px solid transparent;
     border-right: 12px solid transparent;
-    border-top: 18px solid #667eea;
+    border-top: 16px solid #667eea;
   }
 
   .spin-wheel-pointer::after {
-    top: -18px;
+    top: -16px;
     left: -12px;
     border-left: 12px solid transparent;
     border-right: 12px solid transparent;
-    border-top: 18px solid rgba(255, 255, 255, 0.9);
+    border-top: 16px solid rgba(255, 255, 255, 0.9);
   }
 
   .spinning-overlay::before {
     padding: 8px 16px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 }
 

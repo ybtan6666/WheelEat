@@ -15,25 +15,31 @@ function SpinWheel({ restaurants, spinning, result }) {
 
   const wheelGeom = useMemo(() => {
     // More responsive sizing for mobile phones
-    const isMobile = window.innerWidth <= 480;
-    const isSmallMobile = window.innerWidth <= 360;
+    const screenWidth = window.innerWidth;
+    const isSmallMobile = screenWidth <= 360;
+    const isMobile = screenWidth <= 480;
+    const isLargeMobile = screenWidth <= 600; // iPhone 14 Pro Max is ~430px
     
     let wheelSize;
     if (isSmallMobile) {
       // Very small phones: use most of screen width minus padding
-      wheelSize = Math.min(300, window.innerWidth - 40);
+      wheelSize = Math.min(280, screenWidth - 40);
     } else if (isMobile) {
-      // Regular mobile phones: optimize for phone screens
-      wheelSize = Math.min(350, window.innerWidth - 60);
+      // Regular mobile phones (including iPhone 14 Pro Max): optimize sizing
+      // Use ~85% of screen width, max 320px for better balance
+      wheelSize = Math.min(320, Math.floor(screenWidth * 0.75));
+    } else if (isLargeMobile) {
+      // Large mobile phones / small tablets
+      wheelSize = Math.min(380, screenWidth - 80);
     } else {
       // Tablets and desktop: original sizing
-      wheelSize = Math.min(420, window.innerWidth - 80);
+      wheelSize = Math.min(420, screenWidth - 80);
     }
     
     // Scale pointer and padding for mobile
-    const pointerSize = isMobile ? 16 : 20;
-    const pointerGap = isMobile ? 8 : 10;
-    const padding = isMobile ? 10 : 14;
+    const pointerSize = isMobile ? 14 : 20;
+    const pointerGap = isMobile ? 6 : 10;
+    const padding = isMobile ? 8 : 14;
     const extra = pointerSize + pointerGap + padding;
     
     return {
