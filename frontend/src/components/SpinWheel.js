@@ -14,11 +14,28 @@ function SpinWheel({ restaurants, spinning, result }) {
   }, [restaurants]);
 
   const wheelGeom = useMemo(() => {
-    const wheelSize = Math.min(420, window.innerWidth - 80);
-    const pointerSize = 20;
-    const pointerGap = 10;
-    const padding = 14;
+    // More responsive sizing for mobile phones
+    const isMobile = window.innerWidth <= 480;
+    const isSmallMobile = window.innerWidth <= 360;
+    
+    let wheelSize;
+    if (isSmallMobile) {
+      // Very small phones: use most of screen width minus padding
+      wheelSize = Math.min(300, window.innerWidth - 40);
+    } else if (isMobile) {
+      // Regular mobile phones: optimize for phone screens
+      wheelSize = Math.min(350, window.innerWidth - 60);
+    } else {
+      // Tablets and desktop: original sizing
+      wheelSize = Math.min(420, window.innerWidth - 80);
+    }
+    
+    // Scale pointer and padding for mobile
+    const pointerSize = isMobile ? 16 : 20;
+    const pointerGap = isMobile ? 8 : 10;
+    const padding = isMobile ? 10 : 14;
     const extra = pointerSize + pointerGap + padding;
+    
     return {
       wheelSize,
       size: wheelSize + extra * 2,
@@ -26,6 +43,8 @@ function SpinWheel({ restaurants, spinning, result }) {
       pointerSize,
       pointerGap,
       padding,
+      isMobile,
+      isSmallMobile,
     };
   }, []);
 
@@ -57,14 +76,17 @@ function SpinWheel({ restaurants, spinning, result }) {
     ].join(' ');
   };
 
-  const getLabelStyleForCount = (count) => {
+  const getLabelStyleForCount = (count, isMobile, isSmallMobile) => {
+    // Adjust font sizes for mobile - make them larger for better readability
+    const baseMultiplier = isSmallMobile ? 1.1 : isMobile ? 1.0 : 0.95;
+    
     // Tweak these thresholds to your taste. Goal: keep labels readable as slices get thinner.
-    if (count <= 8) return { fontSize: 4.2, maxChars: 18 };
-    if (count <= 12) return { fontSize: 3.7, maxChars: 16 };
-    if (count <= 18) return { fontSize: 3.2, maxChars: 14 };
-    if (count <= 26) return { fontSize: 2.7, maxChars: 11 };
-    if (count <= 36) return { fontSize: 2.4, maxChars: 9 };
-    return { fontSize: 2.1, maxChars: 8 };
+    if (count <= 8) return { fontSize: 4.5 * baseMultiplier, maxChars: isMobile ? 16 : 18 };
+    if (count <= 12) return { fontSize: 4.0 * baseMultiplier, maxChars: isMobile ? 14 : 16 };
+    if (count <= 18) return { fontSize: 3.5 * baseMultiplier, maxChars: isMobile ? 12 : 14 };
+    if (count <= 26) return { fontSize: 3.0 * baseMultiplier, maxChars: isMobile ? 10 : 11 };
+    if (count <= 36) return { fontSize: 2.6 * baseMultiplier, maxChars: isMobile ? 8 : 9 };
+    return { fontSize: 2.3 * baseMultiplier, maxChars: isMobile ? 7 : 8 };
   };
 
   // Spinning sound (frontend/public/sounds/spin.mp3 -> /sounds/spin.mp3)
@@ -213,11 +235,13 @@ function SpinWheel({ restaurants, spinning, result }) {
                 const start = -90 + i * sliceDeg;
                 const end = -90 + (i + 1) * sliceDeg;
                 const d = describeSlice(50, 50, 48, start, end);
-                const { fontSize, maxChars } = getLabelStyleForCount(items.length);
+                const { fontSize, maxChars } = getLabelStyleForCount(items.length, wheelGeom.isMobile, wheelGeom.isSmallMobile);
                 const label =
                   r.name.length > maxChars ? `${r.name.slice(0, Math.max(1, maxChars - 1))}…` : r.name;
                 const mid = (start + end) / 2;
-                const textPos = polarToCartesian(50, 50, 30, mid);
+                // Adjust text position for mobile - move it slightly closer to center for better readability
+                const textRadius = wheelGeom.isMobile ? 28 : 30;
+                const textPos = polarToCartesian(50, 50, textRadius, mid);
                 const fill = palette[i % palette.length];
 
                 return (
