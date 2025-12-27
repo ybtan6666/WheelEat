@@ -11,6 +11,20 @@ import { getMallInfo, getRestaurantsByMall, getLogoPath } from './lib/restaurant
 
 const CACHE_TTL_SECONDS = 300; // 5 minutes
 
+function toRestaurantObject(row, mallId) {
+  // Source of truth is restaurants.js: [Restaurant Name, Unit Number, Floor, Category, Halal Status]
+  if (!Array.isArray(row)) return null;
+  const [name, unit, floor, category] = row;
+  if (!name) return null;
+  return {
+    name,
+    unit: unit || null,
+    floor: floor || null,
+    category: category || 'Unknown',
+    logo: getLogoPath(name, mallId),
+  };
+}
+
 function normalizeName(input) {
   return String(input || '')
     .toLowerCase()
@@ -19,61 +33,77 @@ function normalizeName(input) {
     .trim();
 }
 
+function tokenize(s) {
+  const norm = normalizeName(s);
+  return norm ? norm.split(' ').filter(Boolean) : [];
+}
+
+function matchScore(aName, bName) {
+  // Simple token overlap score; good enough for mall-restaurant names.
+  const a = tokenize(aName);
+  const b = tokenize(bName);
+  if (a.length === 0 || b.length === 0) return 0;
+  const setA = new Set(a);
+  const setB = new Set(b);
+  let inter = 0;
+  for (const t of setA) if (setB.has(t)) inter += 1;
+  const union = new Set([...setA, ...setB]).size || 1;
+  const jaccard = inter / union;
+  // Bonus for exact normalized equality
+  const exact = normalizeName(aName) === normalizeName(bName) ? 1 : 0;
+  return jaccard + exact;
+}
+
 function pickBestMatch(targetName, places) {
   const target = normalizeName(targetName);
   if (!target) return null;
 
-  // Exact normalized match first
+  let best = null;
+  let bestScore = -1;
   for (const p of places) {
-    if (normalizeName(p?.name) === target) return p;
-  }
-
-  // Contains match (either direction)
-  for (const p of places) {
-    const pn = normalizeName(p?.name);
+    const pn = p?.name;
     if (!pn) continue;
-    if (pn.includes(target) || target.includes(pn)) return p;
+    const score = matchScore(targetName, pn);
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
+    }
   }
-
-  return null;
+  // Require some minimal similarity so we don’t attach random places.
+  return bestScore >= 0.4 ? best : null;
 }
 
-async function fetchPlacesForMall(mallDisplayName, apiKey) {
+async function fetchPlacesForQuery(query, apiKey) {
   // Google Places Text Search (legacy) endpoint.
-  // We fetch up to 3 pages (max ~60 results). next_page_token requires a short delay before use.
-  const query = `restaurants in ${mallDisplayName}`;
   const baseUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
 
-  const allResults = [];
-  let pageToken = null;
+  const url = new URL(baseUrl);
+  url.searchParams.set('query', query);
+  url.searchParams.set('key', apiKey);
 
-  for (let page = 0; page < 3; page++) {
-    const url = new URL(baseUrl);
-    url.searchParams.set('query', query);
-    url.searchParams.set('key', apiKey);
-    // Keep payload small; only request what we need.
-    // (Text Search returns many fields; this endpoint doesn't support field masks.)
-    if (pageToken) url.searchParams.set('pagetoken', pageToken);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Google Places Text Search failed: HTTP ${res.status}`);
 
-    // next_page_token can be INVALID_REQUEST if used immediately.
-    if (pageToken) {
-      await new Promise((r) => setTimeout(r, 2000));
+  const data = await res.json();
+  return Array.isArray(data?.results) ? data.results : [];
+}
+
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let idx = 0;
+
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i], i);
     }
-
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      throw new Error(`Google Places Text Search failed: HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    const results = Array.isArray(data?.results) ? data.results : [];
-    for (const r of results) allResults.push(r);
-
-    pageToken = data?.next_page_token;
-    if (!pageToken) break;
   }
 
-  return allResults;
+  const workers = [];
+  const n = Math.max(1, Math.min(limit, items.length));
+  for (let i = 0; i < n; i++) workers.push(worker());
+  await Promise.all(workers);
+  return results;
 }
 
 export async function onRequest(context) {
@@ -93,7 +123,10 @@ export async function onRequest(context) {
     if (cached) return cached;
 
     const mallInfo = getMallInfo(mallId);
-    const restaurants = getRestaurantsByMall(mallId);
+    const raw = getRestaurantsByMall(mallId);
+    const restaurants = (Array.isArray(raw) ? raw : [])
+      .map((row) => toRestaurantObject(row, mallId))
+      .filter(Boolean);
 
     const apiKey = env.GOOGLE_PLACES_API_KEY || env.GOOGLE_API_KEY;
     if (!apiKey) {
@@ -107,7 +140,7 @@ export async function onRequest(context) {
           unit: r.unit || null,
           floor: r.floor || null,
           category: r.category || 'Unknown',
-          logo: r.logo || getLogoPath(r.name, mallId),
+          logo: r.logo || null,
           rating: null,
           reviews: null,
           google: null,
@@ -120,30 +153,35 @@ export async function onRequest(context) {
       return new Response(JSON.stringify(fallback), { status: 200, headers });
     }
 
-    const places = await fetchPlacesForMall(mallInfo?.display_name || mallInfo?.name || mallId, apiKey);
+    const mallQueryName = mallInfo?.display_name || mallInfo?.name || mallId;
 
-    const enriched = restaurants.map((r) => {
-      const match = pickBestMatch(r.name, places);
-      return {
-        name: r.name,
-        unit: r.unit || null,
-        floor: r.floor || null,
-        category: r.category || 'Unknown',
-        logo: r.logo || getLogoPath(r.name, mallId),
-        rating: typeof match?.rating === 'number' ? match.rating : null,
-        reviews: typeof match?.user_ratings_total === 'number' ? match.user_ratings_total : null,
-        google: match
-          ? {
-              place_id: match.place_id || null,
-              name: match.name || null,
-            }
-          : null,
-      };
+    // Per-restaurant search gives much better coverage than "restaurants in mall" for long mall lists.
+    // Concurrency is limited to avoid timeouts / rate spikes.
+    const enriched = await mapWithConcurrency(restaurants, 6, async (r) => {
+      try {
+        const query = `${r.name} ${mallQueryName}`;
+        const candidates = await fetchPlacesForQuery(query, apiKey);
+        const match = pickBestMatch(r.name, candidates);
+        return {
+          ...r,
+          rating: typeof match?.rating === 'number' ? match.rating : null,
+          reviews: typeof match?.user_ratings_total === 'number' ? match.user_ratings_total : null,
+          google: match
+            ? {
+                place_id: match.place_id || null,
+                name: match.name || null,
+              }
+            : null,
+        };
+      } catch (e) {
+        // Gracefully degrade per-restaurant if Google fails for a specific query.
+        return { ...r, rating: null, reviews: null, google: null };
+      }
     });
 
     const body = {
       mall: { id: mallId, name: mallInfo?.name, display_name: mallInfo?.display_name },
-      source: 'google_places_textsearch',
+      source: 'google_places_textsearch_per_restaurant',
       cached_ttl_seconds: CACHE_TTL_SECONDS,
       restaurants: enriched,
     };
