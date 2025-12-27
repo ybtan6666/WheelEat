@@ -7,6 +7,7 @@ import './Login.css';
  */
 function GuestLogin({ onLogin }) {
   const handleGuestLogin = () => {
+    console.log('Guest login clicked');
     // Generate temporary guest ID
     const guestId = 'guest_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
     
@@ -20,9 +21,11 @@ function GuestLogin({ onLogin }) {
     };
 
     // Save to localStorage
+    console.log('Saving guest user to localStorage:', guestUser);
     localStorage.setItem('wheeleat_user', JSON.stringify(guestUser));
     
     // Trigger login callback
+    console.log('Calling onLogin callback for guest');
     onLogin(guestUser);
   };
 
@@ -44,21 +47,28 @@ function GuestLogin({ onLogin }) {
 function GoogleLoginButton({ onLogin }) {
   const [loading, setLoading] = useState(false);
 
+  console.log('GoogleLoginButton: Initializing Google OAuth login');
+
   const googleLogin = useGoogleLogin({
     scope: 'openid email profile',
     onSuccess: async (tokenResponse) => {
+      console.log('Google OAuth Success - Token received:', tokenResponse);
       setLoading(true);
       try {
         // Get user info from Google
+        console.log('Fetching user info from Google API...');
         const userInfoResponse = await fetch(
           `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${tokenResponse.access_token}`
         );
+        console.log('User info response status:', userInfoResponse.status);
         if (!userInfoResponse.ok) {
           const body = await userInfoResponse.text();
           throw new Error(`Failed to fetch Google user profile (${userInfoResponse.status}): ${body}`);
         }
         const userInfo = await userInfoResponse.json();
+        console.log('User info received:', userInfo);
         if (!userInfo?.sub) {
+          console.error('Missing "sub" in user info:', userInfo);
           throw new Error('Google user profile missing "sub" (Google user id). Check OAuth configuration.');
         }
 
@@ -73,9 +83,11 @@ function GoogleLoginButton({ onLogin }) {
         };
 
         // Save to localStorage
+        console.log('Saving user to localStorage:', googleUser);
         localStorage.setItem('wheeleat_user', JSON.stringify(googleUser));
         
         // Trigger login callback
+        console.log('Calling onLogin callback');
         onLogin(googleUser);
       } catch (error) {
         console.error('Google login error:', error);
@@ -117,6 +129,14 @@ function GoogleLoginButton({ onLogin }) {
  */
 function Login({ onLogin }) {
   const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+  // Debug logging
+  console.log('=== Login Component Debug ===');
+  console.log('REACT_APP_GOOGLE_CLIENT_ID:', googleClientId);
+  console.log('process.env keys:', Object.keys(process.env).filter(key => key.includes('GOOGLE')));
+  console.log('All REACT_APP_ env vars:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP_')));
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('===========================');
 
   // If Google Client ID is not configured, show message
   if (!googleClientId) {

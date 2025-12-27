@@ -336,12 +336,14 @@ function App() {
 
   // Check if user is already logged in (on page load)
   useEffect(() => {
+    console.log('=== App Component - Auth Check ===');
     // Testing helpers:
     // - ?resetAuth=1  -> clears saved user and shows login
     // - ?forceLogin=1 -> ignores saved user and shows login (does NOT clear)
     const params = new URLSearchParams(window.location.search);
     const resetAuth = params.get('resetAuth') === '1';
     const forceLogin = params.get('forceLogin') === '1';
+    console.log('resetAuth:', resetAuth, 'forceLogin:', forceLogin);
 
     if (resetAuth) {
       localStorage.removeItem('wheeleat_user');
@@ -352,21 +354,29 @@ function App() {
     }
 
     const savedUser = localStorage.getItem('wheeleat_user');
+    console.log('Saved user from localStorage:', savedUser ? 'Found' : 'Not found');
     if (savedUser && !forceLogin && !resetAuth) {
       try {
         const userData = JSON.parse(savedUser);
+        console.log('Parsed user data:', userData);
         setUser(userData);
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('wheeleat_user');
       }
+    } else {
+      console.log('No saved user or forceLogin/resetAuth is true - showing login');
     }
     setLoading(false);
+    console.log('===============================');
   }, []);
 
   // Handle login success
   const handleLogin = (userData) => {
+    console.log('=== handleLogin called ===');
+    console.log('User data received:', userData);
     setUser(userData);
+    console.log('User state updated');
     // User data is already saved in localStorage by Login component
   };
 
