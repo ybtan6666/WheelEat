@@ -23,6 +23,20 @@ Your console shows:
    - **Environment**: Select **Production** (or **All environments**)
 3. Click **"Save"**
 
+### Step 2b (Leaderboard): Add Google Places API Key
+
+The restaurant leaderboard enriches your mall restaurant list with **star rating** and **review count** from **Google Places**.
+
+Add one of these (recommended: `GOOGLE_PLACES_API_KEY`):
+
+- **Variable name**: `GOOGLE_PLACES_API_KEY`
+- **Value**: Your Google Places API key
+- **Environment**: Production (or All)
+
+Fallback name supported:
+
+- `GOOGLE_API_KEY`
+
 ### Step 3: Redeploy
 
 After adding the environment variable:

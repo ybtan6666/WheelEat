@@ -7,11 +7,8 @@ import MallSelector from './components/MallSelector';
 import ResultModal from './components/ResultModal';
 import Login from './components/Login';
 import AdSense from './components/AdSense';
-
-// API base URL for local development.
-// - Production (Cloudflare Pages): leave unset so we use same-origin requests.
-// - Local dev (npm start): set REACT_APP_API_BASE_URL, e.g. https://wheeleat-xp5.pages.dev
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+import { fetchMalls, fetchCategories, fetchRestaurants, spinWheel } from './services/api';
+import Leaderboard from './components/Leaderboard';
 
 /**
  * Main App Component (WheelEat functionality)
@@ -28,6 +25,7 @@ function WheelEatApp({ user, onLogout }) {
   const [result, setResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [error, setError] = useState(null);
+  const [activeView, setActiveView] = useState('wheel'); // 'wheel' | 'leaderboard'
   const ringAudioRef = useRef(null);
   const clickAudioRef = useRef(null);
 
@@ -90,19 +88,8 @@ function WheelEatApp({ user, onLogout }) {
 
   // Load available malls on mount
   useEffect(() => {
-    const url = `${API_BASE_URL}/api/malls`;
-    console.log('Fetching malls from:', url);
-    
-    fetch(url)
-      .then(res => {
-        console.log('Malls response status:', res.status, res.statusText);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        console.log('Malls data received:', data);
+    fetchMalls()
+      .then((data) => {
         setMalls(data.malls || []);
         setMallsLoading(false);
         // Set default mall if available
@@ -110,7 +97,7 @@ function WheelEatApp({ user, onLogout }) {
           setMallId(data.malls[0].id);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to load malls:', err);
         setMallsLoading(false);
       });
@@ -120,22 +107,11 @@ function WheelEatApp({ user, onLogout }) {
   // Load categories when mall changes
   useEffect(() => {
     if (mallId) {
-      const url = `${API_BASE_URL}/api/categories?mall_id=${encodeURIComponent(mallId)}`;
-      console.log('Fetching categories from:', url);
-      
-      fetch(url)
-        .then(res => {
-          console.log('Categories response status:', res.status, res.statusText);
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-          }
-          return res.json();
-        })
-        .then(data => {
-          console.log('Categories data received:', data);
+      fetchCategories(mallId)
+        .then((data) => {
           setCategories(data.categories || []);
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('Failed to load categories:', err);
           setCategories([]);
         });
@@ -150,11 +126,9 @@ function WheelEatApp({ user, onLogout }) {
   // Load restaurants when categories or mall changes
   useEffect(() => {
     if (selectedCategories.length > 0 && mallId) {
-      const categoriesParam = selectedCategories.join(',');
-      fetch(`${API_BASE_URL}/api/restaurants?categories=${encodeURIComponent(categoriesParam)}&mall_id=${encodeURIComponent(mallId)}&dietary_need=${encodeURIComponent(dietaryNeed)}`)
-        .then(res => res.json())
-        .then(data => setRestaurants(data.restaurants))
-        .catch(err => {
+      fetchRestaurants({ categories: selectedCategories, mallId, dietaryNeed })
+        .then((data) => setRestaurants(data.restaurants))
+        .catch((err) => {
           console.error('Failed to load restaurants:', err);
           setRestaurants([]);
         });
@@ -183,24 +157,7 @@ function WheelEatApp({ user, onLogout }) {
 
     // Get the result immediately (while spinning) but don't show it yet
     try {
-      const response = await fetch(`${API_BASE_URL}/api/spin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dietary_need: dietaryNeed,
-          selected_categories: selectedCategories,
-          mall_id: mallId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Failed to spin the wheel' }));
-        throw new Error(errorData.detail || 'Failed to spin the wheel');
-      }
-
-      const data = await response.json();
+      const data = await spinWheel({ selectedCategories, mallId, dietaryNeed });
       // Set result for wheel calculation, but don't show modal yet
       setResult(data);
       
@@ -244,6 +201,40 @@ function WheelEatApp({ user, onLogout }) {
             <div style={{ flex: 1 }} />
             <h1 style={{ margin: 0, flex: 'none' }}>🍽️ WheelEat</h1>
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('wheel')}
+                  style={{
+                    background: activeView === 'wheel' ? '#667eea' : 'transparent',
+                    border: '1px solid rgba(102,126,234,0.45)',
+                    color: activeView === 'wheel' ? 'white' : '#667eea',
+                    padding: '8px 12px',
+                    borderRadius: '999px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Wheel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('leaderboard')}
+                  style={{
+                    background: activeView === 'leaderboard' ? '#667eea' : 'transparent',
+                    border: '1px solid rgba(102,126,234,0.45)',
+                    color: activeView === 'leaderboard' ? 'white' : '#667eea',
+                    padding: '8px 12px',
+                    borderRadius: '999px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Leaderboard
+                </button>
+              </div>
               {user?.name ? (
                 <span style={{ fontSize: '0.9rem', color: '#667eea', fontWeight: 600, whiteSpace: 'nowrap' }}>
                   {user.name}
@@ -272,48 +263,63 @@ function WheelEatApp({ user, onLogout }) {
           <p className="subtitle">Spin the wheel to decide where to eat!</p>
         </header>
 
-        <div className="main-content">
-          <div className="selection-panel">
+        {activeView === 'wheel' ? (
+          <div className="main-content">
+            <div className="selection-panel">
+              <MallSelector
+                value={mallId}
+                onChange={setMallId}
+                malls={malls}
+                loading={mallsLoading}
+              />
+              <DietarySelector
+                value={dietaryNeed}
+                onChange={setDietaryNeed}
+                onClickSound={playClick}
+              />
+              <CategorySelector
+                selected={selectedCategories}
+                onChange={setSelectedCategories}
+                categories={categories}
+                onClickSound={playClick}
+              />
+            </div>
+
+            <div className="wheel-panel">
+              <SpinWheel
+                restaurants={restaurants}
+                spinning={spinning}
+                result={result?.restaurant_name}
+              />
+              <button
+                className="spin-button"
+                onClick={handleSpin}
+                disabled={spinning || selectedCategories.length === 0 || restaurants.length === 0}
+              >
+                {spinning ? 'Spinning...' : '🎰 Spin the Wheel!'}
+              </button>
+              {error && <div className="error-message">{error}</div>}
+              {restaurants.length > 0 && !spinning && (
+                <div className="restaurant-count">
+                  {restaurants.length} restaurant{restaurants.length !== 1 ? 's' : ''} available
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: '8px' }}>
             <MallSelector
               value={mallId}
               onChange={setMallId}
               malls={malls}
               loading={mallsLoading}
             />
-            <DietarySelector
-              value={dietaryNeed}
-              onChange={setDietaryNeed}
-              onClickSound={playClick}
-            />
-            <CategorySelector
-              selected={selectedCategories}
-              onChange={setSelectedCategories}
-              categories={categories}
-              onClickSound={playClick}
+            <Leaderboard
+              mallId={mallId}
+              mallName={malls.find((m) => m.id === mallId)?.display_name || malls.find((m) => m.id === mallId)?.name}
             />
           </div>
-
-          <div className="wheel-panel">
-            <SpinWheel
-              restaurants={restaurants}
-              spinning={spinning}
-              result={result?.restaurant_name}
-            />
-            <button
-              className="spin-button"
-              onClick={handleSpin}
-              disabled={spinning || selectedCategories.length === 0 || restaurants.length === 0}
-            >
-              {spinning ? 'Spinning...' : '🎰 Spin the Wheel!'}
-            </button>
-            {error && <div className="error-message">{error}</div>}
-            {restaurants.length > 0 && !spinning && (
-              <div className="restaurant-count">
-                {restaurants.length} restaurant{restaurants.length !== 1 ? 's' : ''} available
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
       
       {/* Result Modal - shows after spin completes */}
@@ -328,10 +334,6 @@ function WheelEatApp({ user, onLogout }) {
   );
 }
 
-/**
- * Root App Component with Login
- * Shows login page if user is not logged in, otherwise shows main app
- */
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);

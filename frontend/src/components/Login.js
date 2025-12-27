@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import './Login.css';
 
-// API base URL for local development.
-// - Production (Cloudflare Pages): leave unset so we use same-origin requests.
-// - Local dev (npm start): set REACT_APP_API_BASE_URL, e.g. https://wheeleat-xp5.pages.dev
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+import { upsertUser } from '../services/api';
 
 /**
  * Guest Login Component
@@ -94,25 +91,12 @@ function GoogleLoginButton({ onLogin }) {
         // Save to database (upsert - create or update)
         try {
           console.log('Saving user to database...');
-          const dbResponse = await fetch(`${API_BASE_URL}/api/users`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              id: googleUser.id,
-              name: googleUser.name,
-              email: googleUser.email,
-            }),
+          const dbResult = await upsertUser({
+            id: googleUser.id,
+            name: googleUser.name,
+            email: googleUser.email,
           });
-
-          if (dbResponse.ok) {
-            const dbResult = await dbResponse.json();
-            console.log('User saved to database:', dbResult);
-          } else {
-            console.warn('Failed to save user to database:', await dbResponse.text());
-            // Continue anyway - user is logged in via localStorage
-          }
+          console.log('User saved to database:', dbResult);
         } catch (dbError) {
           console.error('Error saving user to database:', dbError);
           // Continue anyway - user is logged in via localStorage
@@ -192,7 +176,7 @@ function Login({ onLogin }) {
     <GoogleOAuthProvider clientId={googleClientId}>
       <div className="login-container">
         <div className="login-box">
-          <h1>≡ƒì╜∩╕Å WheelEat haha</h1>
+          <h1>≡ƒì╜∩╕Å WheelEat</h1>
           <p className="login-subtitle">Choose how you'd like to continue</p>
           
           <div className="login-buttons">

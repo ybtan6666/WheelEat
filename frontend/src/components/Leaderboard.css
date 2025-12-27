@@ -1,0 +1,146 @@
+.leaderboard {
+  width: 100%;
+}
+
+.leaderboard-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.leaderboard-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leaderboard-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #2d3748;
+}
+
+.leaderboard-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.leaderboard-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.leaderboard-select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: white;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.leaderboard-card {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.rank-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.leaderboard-main {
+  min-width: 0;
+}
+
+.restaurant-name {
+  margin: 0;
+  font-weight: 800;
+  color: #1a202c;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.restaurant-meta {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: #4a5568;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-pill {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(102,126,234,0.10);
+  color: #3b4cca;
+  font-weight: 700;
+}
+
+.leaderboard-stats {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 110px;
+}
+
+.rating-row {
+  font-weight: 900;
+  color: #2d3748;
+  font-size: 0.95rem;
+}
+
+.stars {
+  letter-spacing: 0.5px;
+}
+
+.reviews-row {
+  font-size: 0.85rem;
+  color: #4a5568;
+  font-weight: 700;
+}
+
+.leaderboard-loading,
+.leaderboard-error {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(0,0,0,0.08);
+  color: #2d3748;
+}
+
+.leaderboard-error {
+  border-color: rgba(229,62,62,0.25);
+  color: #c53030;
+}
+
+
