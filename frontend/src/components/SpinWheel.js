@@ -1,12 +1,58 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './SpinWheel.css';
 
+function getViewportSize() {
+  // visualViewport is more accurate on mobile (esp. iOS address bar / safe areas)
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+  return {
+    width: Math.round(vv?.width ?? window.innerWidth),
+    height: Math.round(vv?.height ?? window.innerHeight),
+  };
+}
+
+function useViewportSize() {
+  const [vp, setVp] = useState(() => {
+    if (typeof window === 'undefined') return { width: 0, height: 0 };
+    return getViewportSize();
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let raf = 0;
+    const update = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setVp(getViewportSize()));
+    };
+
+    const vv = window.visualViewport;
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
+
+    // Ensure correct size on first paint (fixes “refresh-to-fix”)
+    update();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
+    };
+  }, []);
+
+  return vp;
+}
+
 function SpinWheel({ restaurants, spinning, result }) {
   const rotationRef = useRef(0); // current rotation in degrees (normalized 0..360)
   const lastSpinKeyRef = useRef(null);
   const [rotationDeg, setRotationDeg] = useState(0);
   const [transitionMs, setTransitionMs] = useState(0);
   const spinAudioRef = useRef(null);
+  const viewport = useViewportSize();
 
   const items = useMemo(() => {
     if (!restaurants || restaurants.length === 0) return [];
@@ -14,11 +60,49 @@ function SpinWheel({ restaurants, spinning, result }) {
   }, [restaurants]);
 
   const wheelGeom = useMemo(() => {
-    const wheelSize = Math.min(420, window.innerWidth - 80);
-    const pointerSize = 20;
-    const pointerGap = 10;
-    const padding = 14;
+    // More responsive sizing for mobile phones - ensure it fits on screen
+    const screenWidth = viewport.width || window.innerWidth;
+    const screenHeight = viewport.height || window.innerHeight;
+    
+    // Account for all spacing: container padding, header, buttons, etc.
+    const containerPadding = screenWidth <= 480 ? 50 : 80; // Account for container padding (25px each side on mobile)
+    const headerSpace = screenWidth <= 480 ? 100 : 120; // Space for header and subtitle
+    const buttonSpace = screenWidth <= 480 ? 100 : 100; // Space for spin button and other elements
+    const extraMargin = screenWidth <= 480 ? 50 : 60; // Extra margin for safety
+    
+    // Calculate available space - use the smaller of width or height constraints
+    const availableWidth = screenWidth - containerPadding;
+    const availableHeight = screenHeight - headerSpace - buttonSpace - extraMargin;
+    
+    const isSmallMobile = screenWidth <= 360;
+    const isMobile = screenWidth <= 480;
+    const isLargeMobile = screenWidth <= 600;
+    
+    let wheelSize;
+    if (isSmallMobile) {
+      // Very small phones: ensure it fits in height with more aggressive sizing
+      const widthBased = Math.floor(availableWidth * 0.55);
+      const heightBased = Math.floor(availableHeight * 0.75);
+      wheelSize = Math.min(200, widthBased, heightBased);
+    } else if (isMobile) {
+      // Regular mobile phones: use smaller percentage to ensure it fits
+      const widthBased = Math.floor(availableWidth * 0.50);
+      const heightBased = Math.floor(availableHeight * 0.70);
+      wheelSize = Math.min(220, widthBased, heightBased);
+    } else if (isLargeMobile) {
+      // Large mobile phones / small tablets
+      wheelSize = Math.min(320, Math.floor(availableWidth * 0.70));
+    } else {
+      // Tablets and desktop: original sizing
+      wheelSize = Math.min(420, availableWidth);
+    }
+    
+    // Scale pointer and padding for mobile - make them even smaller
+    const pointerSize = isMobile ? 10 : 20;
+    const pointerGap = isMobile ? 4 : 10;
+    const padding = isMobile ? 4 : 14;
     const extra = pointerSize + pointerGap + padding;
+    
     return {
       wheelSize,
       size: wheelSize + extra * 2,
@@ -26,8 +110,10 @@ function SpinWheel({ restaurants, spinning, result }) {
       pointerSize,
       pointerGap,
       padding,
+      isMobile,
+      isSmallMobile,
     };
-  }, []);
+  }, [viewport.width, viewport.height]);
 
   const sliceDeg = items.length > 0 ? 360 / items.length : 0;
 
@@ -57,14 +143,17 @@ function SpinWheel({ restaurants, spinning, result }) {
     ].join(' ');
   };
 
-  const getLabelStyleForCount = (count) => {
+  const getLabelStyleForCount = (count, isMobile, isSmallMobile) => {
+    // Adjust font sizes for mobile - make them larger for better readability
+    const baseMultiplier = isSmallMobile ? 1.1 : isMobile ? 1.0 : 0.95;
+    
     // Tweak these thresholds to your taste. Goal: keep labels readable as slices get thinner.
-    if (count <= 8) return { fontSize: 4.2, maxChars: 18 };
-    if (count <= 12) return { fontSize: 3.7, maxChars: 16 };
-    if (count <= 18) return { fontSize: 3.2, maxChars: 14 };
-    if (count <= 26) return { fontSize: 2.7, maxChars: 11 };
-    if (count <= 36) return { fontSize: 2.4, maxChars: 9 };
-    return { fontSize: 2.1, maxChars: 8 };
+    if (count <= 8) return { fontSize: 4.5 * baseMultiplier, maxChars: isMobile ? 16 : 18 };
+    if (count <= 12) return { fontSize: 4.0 * baseMultiplier, maxChars: isMobile ? 14 : 16 };
+    if (count <= 18) return { fontSize: 3.5 * baseMultiplier, maxChars: isMobile ? 12 : 14 };
+    if (count <= 26) return { fontSize: 3.0 * baseMultiplier, maxChars: isMobile ? 10 : 11 };
+    if (count <= 36) return { fontSize: 2.6 * baseMultiplier, maxChars: isMobile ? 8 : 9 };
+    return { fontSize: 2.3 * baseMultiplier, maxChars: isMobile ? 7 : 8 };
   };
 
   // Spinning sound (frontend/public/sounds/spin.mp3 -> /sounds/spin.mp3)
@@ -213,11 +302,13 @@ function SpinWheel({ restaurants, spinning, result }) {
                 const start = -90 + i * sliceDeg;
                 const end = -90 + (i + 1) * sliceDeg;
                 const d = describeSlice(50, 50, 48, start, end);
-                const { fontSize, maxChars } = getLabelStyleForCount(items.length);
+                const { fontSize, maxChars } = getLabelStyleForCount(items.length, wheelGeom.isMobile, wheelGeom.isSmallMobile);
                 const label =
                   r.name.length > maxChars ? `${r.name.slice(0, Math.max(1, maxChars - 1))}…` : r.name;
                 const mid = (start + end) / 2;
-                const textPos = polarToCartesian(50, 50, 30, mid);
+                // Adjust text position for mobile - move it slightly closer to center for better readability
+                const textRadius = wheelGeom.isMobile ? 28 : 30;
+                const textPos = polarToCartesian(50, 50, textRadius, mid);
                 const fill = palette[i % palette.length];
 
                 return (
