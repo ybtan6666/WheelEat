@@ -5,8 +5,19 @@ This repository is configured for deployment on Cloudflare Pages with no build c
 ## Structure
 
 - **`/functions/api`** - Cloudflare Pages Functions (backend API endpoints)
+- **`/functions/package.json`** - Dependencies for Cloudflare Pages Functions (must be committed)
+- **`/functions/package-lock.json`** - Lock file for dependencies (must be committed)
 - **`/frontend`** - React frontend source code
 - **`/frontend/build`** - Static build output (should be committed or built before deployment)
+
+## Important: Commit package-lock.json
+
+**You MUST commit `functions/package-lock.json` to your repository** for Cloudflare Pages Functions to properly install dependencies during deployment.
+
+If you see an error like "Could not resolve @supabase/supabase-js", make sure:
+1. `functions/package.json` is committed
+2. `functions/package-lock.json` is committed (run `npm install` in the functions directory if it doesn't exist)
+3. The dependencies are correctly listed in `functions/package.json`
 
 ## Deployment Steps
 
