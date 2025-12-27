@@ -27,9 +27,10 @@ async function handler(req, res) {
 
     const mallId = body.mall_id || 'sunway_square';
     const selectedCategories = body.selected_categories;
+    const halalOnly = body.dietary_need === 'halal_pork_free';
 
     // Get all restaurants in the selected categories for the specified mall
-    const availableRestaurants = getRestaurantsByCategories(selectedCategories, mallId);
+    const availableRestaurants = getRestaurantsByCategories(selectedCategories, mallId, halalOnly);
 
     if (availableRestaurants.length === 0) {
       return res.status(400).json({ detail: 'No restaurants found in selected categories' });

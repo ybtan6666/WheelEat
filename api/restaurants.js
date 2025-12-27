@@ -11,16 +11,17 @@ async function handler(req, res) {
 
   try {
     const mallId = req.query.mall_id || 'sunway_square';
+    const halalOnly = req.query.halal_only === 'true';
     let restaurants;
 
     if (req.query.categories) {
       // Filter by categories
       const categoryList = req.query.categories.split(',').map(c => c.trim());
-      restaurants = getRestaurantsByCategories(categoryList, mallId);
+      restaurants = getRestaurantsByCategories(categoryList, mallId, halalOnly);
     } else {
       // Get all restaurants
       const allCategories = getAllCategories(mallId);
-      restaurants = getRestaurantsByCategories(allCategories, mallId);
+      restaurants = getRestaurantsByCategories(allCategories, mallId, halalOnly);
     }
 
     return res.status(200).json({
