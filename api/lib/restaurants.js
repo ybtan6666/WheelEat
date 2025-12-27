@@ -178,7 +178,8 @@ export function getRestaurantsByCategories(categories, mallId = "sunway_square",
   
   for (const restaurant of restaurants) {
     const [name, unit, floor, category, halal] = restaurant;
-    if (categories.includes(category) && (!halalOnly || halal === "Yes")) {
+    // Filter by category if categories provided, and apply halal filter
+    if ((!categories.length || categories.includes(category)) && (!halalOnly || halal === "Yes")) {
       const logoPath = getLogoPath(name, mallId);
       matchingRestaurants.push({
         name,
