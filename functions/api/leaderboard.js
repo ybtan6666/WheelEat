@@ -281,6 +281,11 @@ export async function onRequest(context) {
     // Support batch processing for client-side batching
     const batch = parseInt(url.searchParams.get('batch') || '0');
     const batchSize = parseInt(url.searchParams.get('batch_size') || '0');
+    
+    // Debug logging for batch parameters
+    if (batch > 0 || batchSize > 0) {
+      console.log(`📦 Batch parameters received: batch=${batch}, batchSize=${batchSize}`);
+    }
 
     // Cache first (edge cache)
     // Skip cache if nocache parameter is present (for debugging)
@@ -339,7 +344,10 @@ export async function onRequest(context) {
       const start = (batch - 1) * batchSize;
       const end = start + batchSize;
       restaurantsToProcess = restaurants.slice(start, end);
-      console.log(`Batch processing: batch ${batch}, size ${batchSize}, processing restaurants ${start + 1}-${Math.min(end, restaurants.length)} of ${restaurants.length}`);
+      console.log(`📦 Batch processing: batch ${batch}, size ${batchSize}, processing restaurants ${start + 1}-${Math.min(end, restaurants.length)} of ${restaurants.length}`);
+      console.log(`📦 Total restaurants: ${restaurants.length}, Sliced to: ${restaurantsToProcess.length}`);
+    } else {
+      console.log(`📦 No batch processing: processing all ${restaurants.length} restaurants`);
     }
     
     // Separate restaurants into two groups: with place_ids and without

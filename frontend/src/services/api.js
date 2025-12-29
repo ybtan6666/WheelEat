@@ -112,9 +112,11 @@ export async function fetchLeaderboard(mallId) {
 // Fetch leaderboard in batches to ensure all restaurants are processed
 // This works around Cloudflare's subrequest limit (~50 per request)
 export async function fetchLeaderboardBatched(mallId = 'sunway_square', batchSize = 25) {
-  const cacheKey = `leaderboard-batched:${mallId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
+  // Don't use cache for batched requests to ensure fresh data and proper batching
+  // The individual batch requests already have nocache=1, but we also skip client-side cache
+  // const cacheKey = `leaderboard-batched:${mallId}`;
+  // const cached = getCached(cacheKey);
+  // if (cached) return cached;
 
   const batches = [];
   let batch = 1;
@@ -177,7 +179,8 @@ export async function fetchLeaderboardBatched(mallId = 'sunway_square', batchSiz
     },
   };
   
-  setCached(cacheKey, result, LEADERBOARD_TTL_MS);
+  // Don't cache batched results to ensure fresh data on each load
+  // setCached(cacheKey, result, LEADERBOARD_TTL_MS);
   return result;
 }
 
