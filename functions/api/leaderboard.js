@@ -82,37 +82,14 @@ function pickBestMatch(targetName, places) {
  * @returns {Promise<object|null>} - Place details or null
  */
 async function fetchPlaceDetails(placeId, apiKey) {
-  if (!placeId || !apiKey) return null;
-  
-  try {
-    // Try new Places API first
-    const baseUrl = `https://places.googleapis.com/v1/places/${placeId}`;
-    
-    const res = await fetch(baseUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'id,displayName,rating,userRatingCount',
-      },
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        name: data.displayName?.text || data.displayName,
-        rating: data.rating,
-        user_ratings_total: data.userRatingCount,
-        place_id: data.id || placeId,
-      };
-    }
-    
-    // Fallback to legacy Place Details API
-    return await fetchPlaceDetailsLegacy(placeId, apiKey);
-  } catch (error) {
-    console.log(`New Places API error for place_id ${placeId}, trying legacy: ${error.message}`);
-    return await fetchPlaceDetailsLegacy(placeId, apiKey);
+  if (!placeId || !apiKey) {
+    console.error(`Missing placeId or apiKey: placeId=${placeId}, apiKey=${apiKey ? 'present' : 'missing'}`);
+    return null;
   }
+  
+  // Use legacy Place Details API directly (more reliable)
+  // The new Places API requires different setup and might not be enabled
+  return await fetchPlaceDetailsLegacy(placeId, apiKey);
 }
 
 /**
@@ -142,7 +119,18 @@ async function fetchPlaceDetailsLegacy(placeId, apiKey) {
     
     // Log API response status for debugging
     if (data.status !== 'OK') {
-      console.error(`Place Details API error for ${placeId}: ${data.status} - ${data.error_message || 'Unknown error'}`);
+      const errorMsg = data.error_message || 'Unknown error';
+      console.error(`Place Details API error for ${placeId}: ${data.status} - ${errorMsg}`);
+      
+      // Return error info for debugging
+      if (data.status === 'REQUEST_DENIED') {
+        console.error(`⚠️ REQUEST_DENIED: API key might be invalid or Place Details API not enabled for ${placeId}`);
+      } else if (data.status === 'INVALID_REQUEST') {
+        console.error(`⚠️ INVALID_REQUEST: place_id might be invalid: ${placeId}`);
+      } else if (data.status === 'NOT_FOUND') {
+        console.error(`⚠️ NOT_FOUND: place_id doesn't exist: ${placeId}`);
+      }
+      
       return null;
     }
     
@@ -153,7 +141,14 @@ async function fetchPlaceDetailsLegacy(placeId, apiKey) {
         user_ratings_total: data.result.user_ratings_total,
         place_id: data.result.place_id || placeId,
       };
-      console.log(`Place Details API success for ${placeId}: rating=${result.rating}, reviews=${result.user_ratings_total}`);
+      
+      // Log success with details
+      if (result.rating !== null && result.rating !== undefined) {
+        console.log(`✅ Place Details API success for ${placeId}: rating=${result.rating}, reviews=${result.user_ratings_total}`);
+      } else {
+        console.log(`⚠️ Place Details API found ${placeId} but no rating available (name: ${result.name})`);
+      }
+      
       return result;
     }
     
