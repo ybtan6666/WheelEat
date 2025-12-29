@@ -86,6 +86,22 @@ export function getPlaceId(restaurantName, mallId = 'sunway_square') {
 }
 
 /**
+ * Check if a restaurant is explicitly marked as unavailable (null in mapping)
+ * This distinguishes between:
+ * - Explicitly null: "don't search, we know it's not available"
+ * - Missing from mapping: "not found yet, try text search"
+ * @param {string} restaurantName - Name of the restaurant
+ * @param {string} mallId - Mall ID (default: 'sunway_square')
+ * @returns {boolean} - true if explicitly marked as null, false otherwise
+ */
+export function isExplicitlyUnavailable(restaurantName, mallId = 'sunway_square') {
+  const mallMapping = RESTAURANT_PLACE_IDS[mallId];
+  if (!mallMapping) return false;
+  // Check if the key exists and its value is explicitly null
+  return restaurantName in mallMapping && mallMapping[restaurantName] === null;
+}
+
+/**
  * Extract place_id from a Google Maps URL (shortened or full)
  * This function attempts to resolve shortened URLs and extract place_id
  * @param {string} url - Google Maps URL
