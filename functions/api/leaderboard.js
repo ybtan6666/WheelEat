@@ -131,7 +131,18 @@ async function fetchPlaceDetailsLegacy(placeId, apiKey) {
     url.searchParams.set('fields', 'name,rating,user_ratings_total,place_id');
 
     console.log(`Fetching Place Details for ${placeId}...`);
-    const res = await fetch(url.toString());
+    let res;
+    try {
+      res = await fetch(url.toString());
+    } catch (error) {
+      // Catch "Too many subrequests" error from Cloudflare
+      if (error.message && error.message.includes('Too many subrequests')) {
+        console.error(`⚠️ Cloudflare subrequest limit reached for ${placeId}. This is a Cloudflare Pages limit, not an API issue.`);
+        throw error; // Re-throw to be handled by caller
+      }
+      throw error;
+    }
+    
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`Place Details API failed: HTTP ${res.status} - ${text}`);
@@ -313,13 +324,17 @@ export async function onRequest(context) {
     const mallQueryName = mallInfo?.display_name || mallInfo?.name || mallId;
 
     // Per-restaurant search gives much better coverage than "restaurants in mall" for long mall lists.
-    // Concurrency is limited to avoid timeouts / rate spikes.
+    // Concurrency is limited to avoid hitting Cloudflare's "Too many subrequests" limit (typically 50 per request).
+    // With 66 restaurants, we need to keep concurrency low (2-3) to stay under the limit.
     // Track errors for debugging
     const errors = [];
     let successCount = 0;
     let errorCount = 0;
     
-    const enriched = await mapWithConcurrency(restaurants, 6, async (r) => {
+    // Reduced concurrency from 6 to 2 to avoid "Too many subrequests" error
+    // Each restaurant may make 1-2 API calls (Place Details + possibly Text Search fallback)
+    // With 66 restaurants and concurrency of 2, we'll make ~66-132 subrequests, which is close to the limit
+    const enriched = await mapWithConcurrency(restaurants, 2, async (r) => {
       try {
         // First, check if we have a place_id mapping for this restaurant
         const placeId = getPlaceId(r.name, mallId);
@@ -353,9 +368,15 @@ export async function onRequest(context) {
             };
           } else {
             // Place Details API failed, will fallback to text search
+            // Check if it's a "Too many subrequests" error (Cloudflare limit)
+            const isSubrequestLimit = match === null && placeId; // If match is null, it might be due to subrequest limit
+            
             console.error(`❌ Place Details API failed for "${r.name}" (place_id: ${placeId})`);
             console.error(`   - apiKey present: ${!!apiKey}`);
             console.error(`   - apiKey length: ${apiKey ? apiKey.length : 0}`);
+            if (isSubrequestLimit) {
+              console.error(`   - ⚠️ Likely hit Cloudflare "Too many subrequests" limit`);
+            }
             console.error(`   - Falling back to text search`);
             debugInfo = { 
               method: 'place_details', 
@@ -363,7 +384,8 @@ export async function onRequest(context) {
               found: false, 
               fallback: 'text_search',
               apiKey_present: !!apiKey,
-              apiKey_length: apiKey ? apiKey.length : 0
+              apiKey_length: apiKey ? apiKey.length : 0,
+              error: isSubrequestLimit ? 'Too many subrequests (Cloudflare limit)' : 'Unknown'
             };
           }
         }
@@ -429,10 +451,18 @@ export async function onRequest(context) {
         };
       } catch (e) {
         errorCount++;
-        errors.push({ restaurant: r.name, error: e.message });
-        // Log first few errors for debugging
-        if (errors.length <= 3) {
-          console.error(`Error fetching Places data for "${r.name}":`, e.message);
+        const errorMsg = e.message || String(e);
+        errors.push({ restaurant: r.name, error: errorMsg });
+        
+        // Check if it's a "Too many subrequests" error
+        if (errorMsg.includes('Too many subrequests')) {
+          console.error(`⚠️ Cloudflare subrequest limit reached for "${r.name}". This is a Cloudflare Pages limit (typically 50 subrequests per request).`);
+          console.error(`   Consider reducing concurrency or implementing request batching.`);
+        } else {
+          // Log first few errors for debugging
+          if (errors.length <= 3) {
+            console.error(`Error fetching Places data for "${r.name}":`, errorMsg);
+          }
         }
         return { ...r, rating: null, reviews: null, google: null };
       }
