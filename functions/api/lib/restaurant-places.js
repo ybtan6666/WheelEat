@@ -75,7 +75,7 @@ export const RESTAURANT_PLACE_IDS = {
     "Yama by Hojichaya": null,
     "Yogurt Planet": null,
     "Zus Coffee": null,
-    "Zok Noodle House": null,
+    "Zok Noodle House": "ChIJPUl4EQBNzDERJmv9rI92FcM",
   },
 };
 
