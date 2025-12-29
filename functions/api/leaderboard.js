@@ -617,8 +617,8 @@ export async function onRequest(context) {
     enrichedWithPlaceIds.forEach(r => enrichedMap.set(r.name, r));
     enrichedWithoutPlaceIds.forEach(r => enrichedMap.set(r.name, r));
     
-    // Reconstruct in original order
-    const enriched = restaurants.map(r => enrichedMap.get(r.name) || {
+    // Reconstruct in original order - use restaurantsToProcess (sliced if batching) not the full restaurants array
+    const enriched = restaurantsToProcess.map(r => enrichedMap.get(r.name) || {
       ...r,
       rating: null,
       reviews: null,
