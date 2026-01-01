@@ -4,6 +4,16 @@
 import { getRestaurantsByCategories } from './lib/restaurants.js';
 import { getD1Database, generateUUID, getCurrentTimestamp } from './lib/d1.js';
 import { createCORSResponse, jsonResponse } from './lib/cors.js';
+import { RESTAURANT_PLACE_IDS } from './lib/restaurant-places.js';
+
+// Helper function to get Google Maps URL from restaurant name and mall ID
+function getGoogleMapsUrl(restaurantName, mallId) {
+  const placeId = RESTAURANT_PLACE_IDS[mallId]?.[restaurantName];
+  if (!placeId) {
+    return null;
+  }
+  return `https://www.google.com/maps/place/?q=place_id:${placeId}`;
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -73,6 +83,9 @@ export async function onRequest(context) {
         console.error('Database error:', result.error);
         // Continue even if database insert fails
       }
+
+      // Get Google Maps URL for the restaurant
+      const googleMapsUrl = getGoogleMapsUrl(selectedRestaurant.name, mallId);
 
       return jsonResponse({
         restaurant_name: selectedRestaurant.name,
