@@ -87,7 +87,7 @@ export async function onRequest(context) {
     } catch (dbError) {
       console.error('Database error:', dbError);
       // Return result even if database insert fails
-      // Get Google Maps URL for the restaurant`n      const googleMapsUrl = getGoogleMapsUrl(selectedRestaurant.name, mallId);`n      `n      return jsonResponse({
+      // Get Google Maps URL for the restaurant`r`n      const googleMapsUrl = getGoogleMapsUrl(selectedRestaurant.name, mallId);`r`n      `r`n      return jsonResponse({
         restaurant_name: selectedRestaurant.name,
         restaurant_unit: selectedRestaurant.unit,
         restaurant_floor: selectedRestaurant.floor,
